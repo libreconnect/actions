@@ -1,0 +1,61 @@
+name: CI/Update Helmfile With New Release Version
+
+on:
+  workflow_call:
+    inputs:
+      environment:
+        description: 'The environment to deploy to'
+        required: true
+        type: string
+      release-version:
+        description: 'The version to release'
+        required: true
+        type: string
+      repository:
+        description: 'The repository to checkout'
+        required: true
+        type: string
+    secrets:
+      PAT:
+        description: 'The personal access token used to checkout the repository'
+        required: true
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'The environment to deploy to'
+        required: true
+        type: string
+      release-version:
+        description: 'The version to release'
+        required: true
+        type: string
+      repository:
+        description: 'The repository to checkout'
+        required: true
+        type: string
+
+jobs:
+  update-helmfile:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.PAT }}
+          repository: ${{ inputs.repository}}
+          ref: main
+      - name: Update helmfile staging
+        run: |
+          VERSION="${{ inputs.release-version }}"
+          echo "Version de ${{ inputs.environment }} qui sera déployé sur le helmfile: $VERSION"
+          yq -ie ".image.tag=\"$VERSION\"" ./kubernetes/helmfiles/${{ inputs.environment }}/values.yml
+      - name: Commit and push changes
+        run: |
+          VERSION="${{ inputs.release-version }}"
+          git config --global user.name 'github-actions'
+          git config --global user.email 'github-actions@github.com'
+          git add ./kubernetes/helmfiles/${{ inputs.environment }}/values.yml
+          git commit -m "${{ inputs.environment }}: Deployment of version `${{ inputs.release-version }}`"
+          git push
+        env:
+          GITHUB_TOKEN: ${{ secrets.PAT }}
