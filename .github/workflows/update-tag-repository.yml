@@ -1,0 +1,61 @@
+name: CI/Update Helmfile With New Release Version
+
+on:
+  workflow_call:
+    inputs:
+      environment:
+        description: 'The environment to deploy to'
+        required: true
+        type: string
+      release-version:
+        description: 'The version to release'
+        required: true
+        type: string
+      repository:
+        description: 'The repository to checkout'
+        required: true
+        type: string
+    secrets:
+      PAT:
+        description: 'The personal access token used to checkout the repository'
+        required: true
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'The environment to deploy to'
+        required: true
+        type: string
+      release-version:
+        description: 'The version to release'
+        required: true
+        type: string
+      repository:
+        description: 'The repository to checkout'
+        required: true
+        type: string
+
+jobs:
+  update-tag-repository:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.PAT }}
+          repository: ${{ inputs.repository }}
+          ref: main
+      - name: Delete tag repository
+        run: |
+          git config user.name "GitHub Actions"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git push origin :refs/tags/${{ inputs.release-version }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.PAT }}
+      - name: Tag repository
+        run: |
+          git config user.name "GitHub Actions"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "${{ inputs.release-version }}" -m "${{ inputs.environment }} release"
+          git push origin "${{ inputs.release-version }}"
+        env:
+          GITHUB_TOKEN: ${{ secrets.PAT }}
